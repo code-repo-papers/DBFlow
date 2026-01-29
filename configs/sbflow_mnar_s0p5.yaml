@@ -1,0 +1,71 @@
+# SB-FLOW Configuration for Moderate MNAR (strength=0.5)
+# 
+# MNAR_self_pos_s0p5: π(m_j = 1 | x) = σ(0.5 · x_j + b)
+# - Ground Truth S (normalized) ≈ 0.37
+# - Gap (miss - obs) ≈ 0.47
+# - This is a moderate MNAR that is learnable but still has clear signal
+
+seed: 1024
+
+# Data configuration
+data:
+  data_root: "./data"
+  dataname: bean
+  batch_size: 2048
+  num_workers: 8
+  normalize_with_train_stats: true
+
+# Missing mask configuration - MODERATE MNAR
+mask:
+  type: MNAR_self_pos_s0p5         # Self-mask MNAR with strength=0.5
+  rate: 30
+  split_idx: 0
+
+# Model architecture
+model:
+  d_model: 512
+  nlayers: 3
+  dropout: 0.1
+
+# SB-FLOW specific hyperparameters
+sbflow:
+  lambda_B: 0.5
+  lambda_cycle: 0.1
+  source_sigma: 1.0
+  ot_alpha: 0.1
+  ot_reg: 0.05
+  cycle_steps: 10
+
+# Training configuration
+train:
+  max_epochs: 10000
+  save_root: runs/SBFLOW_MNAR_s0p5
+  save_every: 500
+  lr: 0.0001
+  amp: true
+  weight_decay: 0.0
+  grad_clip: 1.0
+  path_schedule: "linear"
+  time_beta: [1.0, 1.0]
+  ema:
+    enabled: true
+    decay: 0.999
+  early_stopping:
+    enabled: true
+    patience: 500
+    min_delta: 0.0001
+
+# Imputation/Inference configuration
+fm:
+  steps: 50
+  trials: 10
+  solver: "heun"
+  aggregation: "single"         # single preserves variance
+  
+  # Resampling for variance preservation
+  # OPTIMAL: interval=5, sigma=0.6 gives Var/True=1.03, S≈0 on bean MCAR
+  resample:
+    enabled: true
+    interval: 5
+    sigma: 0.6                  # Optimal: Var/True=1.03, S≈0 on real data
+

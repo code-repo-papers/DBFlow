@@ -1,0 +1,98 @@
+# SB-FLOW Configuration for MCAR (Missing Completely At Random)
+# 
+# Key difference from standard config:
+# - lambda_B = 0: Disable backward bridge for MCAR
+#
+# Rationale:
+# Under MCAR, missingness is completely random and independent of data values.
+# There is NO missing mechanism to learn, so the backward bridge provides no benefit.
+# Disabling it allows the model to focus entirely on imputation quality.
+
+seed: 1024
+
+# Data configuration
+data:
+  data_root: "./data"
+  dataname: bean
+  batch_size: 2048
+  num_workers: 8
+  normalize_with_train_stats: true
+  clip_outliers: 0.0
+  scale_factor: 1.0
+
+# Missing mask configuration
+mask:
+  type: MCAR                      # Specifically for MCAR
+  rate: 30
+  split_idx: 0
+
+# Model architecture (same as standard config)
+model:
+  d_model: 512
+  nlayers: 4
+  dropout: 0.3
+  mlp_mode: "macfm"             # "macfm" (recommended) or "dynamic"
+
+# SB-FLOW specific hyperparameters - OPTIMIZED FOR MCAR
+sbflow:
+  # ========== KEY CHANGE FOR MCAR ==========
+  lambda_B: 0.0                   # DISABLED: No mechanism to learn under MCAR
+  lambda_cycle: 0.0               # DISABLED: Not needed
+  # =========================================
+  
+  # Source distribution
+  source_sigma: 1.0
+  
+  # Optimal Transport
+  # NOTE: OT coupling is SLOW (CPU-based Sinkhorn). Disable for faster training.
+  ot_enabled: false              # DISABLED for speed (falls back to random pairing)
+  ot_alpha: 0.1
+  ot_reg: 0.05
+  
+  # Cycle consistency (disabled)
+  cycle_steps: 5
+
+# Training configuration
+train:
+  max_epochs: 10000
+  save_root: runs/SBFLOW_MCAR
+  save_every: 500
+  lr: 0.0001
+  amp: true
+  weight_decay: 0.0
+  grad_clip: 1.0
+  
+  # Path schedule
+  path_schedule: "cosine"
+  time_beta: [1.0, 1.0]
+  
+  # MACFM-style regularization
+  lambda_stab: 0.15
+  lambda_cons: 0.01
+  eta_cons: 0.05
+  sigma_in: 0.05
+  augment_target_p: 0.15
+  
+  # EMA
+  ema:
+    enabled: true
+    decay: 0.999
+  
+  # Early stopping
+  early_stopping:
+    enabled: true
+    patience: 500
+    min_delta: 0.0001
+
+# Imputation/Inference configuration
+fm:
+  steps: 50
+  trials: 50
+  solver: "heun"
+  aggregation: "mean"
+  
+  resample:
+    enabled: false
+    interval: 5
+    sigma: 0.6
+

@@ -1,0 +1,88 @@
+# SB-FLOW Configuration for Shoppers Dataset
+# 
+# Shoppers dataset has EXTREME outliers (values up to 32 standard deviations!)
+# This config enables outlier clipping to handle them properly.
+#
+# Key difference from default config:
+# - clip_outliers: 0.01 (winsorize to [1%, 99%] percentile)
+#
+# Usage:
+#   python scripts/run_benchmark.py --dataset shoppers --config configs/sbflow_shoppers.yaml ...
+
+seed: 1024
+
+# Data configuration - WITH OUTLIER CLIPPING
+data:
+  data_root: "./data"
+  dataname: shoppers
+  batch_size: 2048
+  num_workers: 8
+  normalize_with_train_stats: true
+  # ========== KEY CHANGE FOR SHOPPERS ==========
+  clip_outliers: 0.01            # Winsorize to [1%, 99%] - handles extreme outliers
+  # =============================================
+  scale_factor: 1.0
+
+# Missing mask configuration
+mask:
+  type: MNAR_self_pos
+  rate: 30
+  split_idx: 0
+
+# Model architecture (aligned with MACFM)
+model:
+  d_model: 512
+  nlayers: 4
+  dropout: 0.3
+  mlp_mode: "macfm"
+
+# SB-FLOW hyperparameters
+sbflow:
+  lambda_B: 0.1
+  lambda_cycle: 0.0
+  source_sigma: 1.0
+  ot_enabled: false
+  ot_alpha: 0.1
+  ot_reg: 0.05
+  cycle_steps: 5
+
+# Training configuration
+train:
+  max_epochs: 10000
+  save_root: runs/SBFLOW_shoppers
+  save_every: 500
+  lr: 0.0001
+  amp: true
+  weight_decay: 0.0
+  grad_clip: 1.0
+  
+  path_schedule: "cosine"
+  time_beta: [1.0, 1.0]
+  
+  lambda_stab: 0.15
+  lambda_cons: 0.01
+  eta_cons: 0.05
+  sigma_in: 0.05
+  augment_target_p: 0.15
+  
+  ema:
+    enabled: true
+    decay: 0.999
+  
+  early_stopping:
+    enabled: true
+    patience: 500
+    min_delta: 0.0001
+
+# Imputation configuration  
+fm:
+  steps: 50
+  trials: 50
+  solver: "heun"
+  aggregation: "mean"
+  
+  resample:
+    enabled: false
+    interval: 5
+    sigma: 0.6
+

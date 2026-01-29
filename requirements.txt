@@ -1,0 +1,10 @@
+torch>=2.2
+numpy
+pandas
+pyyaml
+tqdm
+scikit-learn
+scipy>=1.10.0
+POT>=0.9.0
+geomloss>=0.2.6      # GPU-accelerated optimal transport (optional but recommended)
+

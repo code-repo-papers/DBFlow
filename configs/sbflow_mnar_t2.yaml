@@ -1,0 +1,89 @@
+# SB-FLOW Configuration for MNAR_logistic_T2 (Real Data)
+# Optimized for cross-feature MNAR mechanism where missing depends on OTHER features
+#
+# Key Differences from synthetic MNAR:
+# - MNAR_logistic_T2: π(m_j|x) = σ(W·x_params + b) where W is random
+# - Self-mask MNAR: π(m_j|x) = σ(α·x_j + b)
+#
+# Optimization Strategy:
+# 1. Larger model to capture cross-feature dependencies
+# 2. Higher OT alpha for better observed-position alignment
+# 3. More training epochs for complex real data patterns
+
+seed: 1024
+
+# Data configuration
+data:
+  data_root: "./data"
+  dataname: bean
+  batch_size: 2048
+  num_workers: 8
+  normalize_with_train_stats: true
+
+# Missing mask configuration
+mask:
+  type: MNAR_logistic_T2           # Cross-feature MNAR mechanism
+  rate: 30
+  split_idx: 0
+
+# Model architecture - LARGER for cross-feature patterns
+model:
+  d_model: 768                     # Increased from 512 to 768
+  nlayers: 4                       # Increased from 3 to 4
+  dropout: 0.15                    # Slightly higher dropout
+
+# SB-FLOW specific hyperparameters - OPTIMIZED for MNAR_logistic_T2
+sbflow:
+  # Loss weights - adjusted for cross-feature MNAR
+  lambda_B: 0.3                    # Reduced: backward bridge less critical for cross-feature
+  lambda_cycle: 0.05               # Reduced: focus on forward imputation quality
+  
+  # Source distribution
+  source_sigma: 1.0                # Keep same
+  
+  # Optimal Transport - CRITICAL for real data
+  ot_alpha: 0.2                    # Increased from 0.1: stronger observed alignment
+  ot_reg: 0.1                      # Increased from 0.05: smoother transport
+  
+  # Cycle consistency
+  cycle_steps: 5                   # Reduced: less emphasis on cycle
+
+# Training configuration - MORE EPOCHS for real data
+train:
+  max_epochs: 15000                # Increased from 10000
+  save_root: runs/SBFLOW_MNAR_T2
+  save_every: 1000
+  lr: 0.00005                      # Reduced: slower for real data
+  amp: true
+  weight_decay: 0.01               # Added regularization
+  grad_clip: 1.0
+  
+  # Path schedule
+  path_schedule: "linear"
+  time_beta: [1.0, 1.0]
+  
+  # EMA
+  ema:
+    enabled: true
+    decay: 0.9995                  # Higher decay for stability
+  
+  # Early stopping - MORE PATIENT for real data
+  early_stopping:
+    enabled: true
+    patience: 800                  # Increased from 500
+    min_delta: 0.00005             # Tighter threshold
+
+# Imputation/Inference configuration
+fm:
+  steps: 100                       # Increased from 50 for better quality
+  trials: 1                        # Single trial to preserve variance
+  solver: "heun"
+  aggregation: "single"            # Critical: preserve variance
+  
+  # Resampling for variance preservation
+  resample:
+    enabled: true
+    interval: 5
+    sigma: 0.1                     # Optimal for variance ≈ 1.0
+
+

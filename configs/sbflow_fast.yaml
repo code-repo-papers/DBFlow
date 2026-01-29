@@ -1,0 +1,61 @@
+# SB-FLOW Fast Benchmark Configuration
+# Optimized for faster training while maintaining quality
+
+seed: 1024
+
+data:
+  data_root: "./data"
+  dataname: bean
+  batch_size: 2048
+  num_workers: 8
+  normalize_with_train_stats: true
+
+mask:
+  type: MCAR
+  rate: 30
+  split_idx: 0
+
+# Model architecture - smaller for faster training
+model:
+  d_model: 256                  # Reduced from 512
+  nlayers: 3                    # 3 layers (faster than 4)
+  dropout: 0.2
+
+sbflow:
+  lambda_B: 0.5
+  lambda_cycle: 0.1
+  source_sigma: 1.0
+  ot_alpha: 0.1
+  ot_reg: 0.05
+  cycle_steps: 10
+
+train:
+  max_epochs: 5000              # Reduced from 10000
+  save_root: runs/SBFLOW_fast
+  save_every: 500
+  lr: 0.0002                    # Slightly higher LR
+  amp: true
+  weight_decay: 0.0
+  grad_clip: 1.0
+  path_schedule: "linear"       # linear is faster than cosine
+  time_beta: [1.0, 1.0]
+  
+  ema:
+    enabled: true
+    decay: 0.999
+  
+  early_stopping:
+    enabled: true
+    patience: 300               # Reduced from 500
+    min_delta: 0.0001
+
+fm:
+  steps: 30                     # Reduced from 50
+  trials: 5                     # Reduced for faster eval
+  solver: "euler"               # euler is faster than heun
+  aggregation: "mean"
+  
+  resample:
+    enabled: false
+    interval: 5
+    sigma: 0.6

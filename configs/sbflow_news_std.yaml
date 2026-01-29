@@ -1,0 +1,90 @@
+# SB-FLOW Configuration
+# Mask-Aware Bidirectional Schrödinger Bridge for Tabular Data Imputation
+
+seed: 1024
+
+# Data configuration
+data:
+  data_root: "./data"
+  dataname: news
+  batch_size: 2048
+  num_workers: 8
+  normalize_with_train_stats: true
+  # Robust normalization for datasets with outliers (e.g., news)
+  clip_outliers: 0.0           # Winsorization: 0.01 = clip to [1%, 99%] percentile
+  scale_factor: 1.0            # Additional scaling (DiffPuter uses 2.0)
+
+# Missing mask configuration
+mask:
+  type: MCAR                    # MCAR | MAR | MNAR_logistic_T2
+  rate: 30                      # Missing rate in percent
+  split_idx: 0                  # Mask split index (0-9)
+
+# Model architecture (aligned with MACFM for fair comparison)
+model:
+  d_model: 512                  # Hidden dimension
+  nlayers: 4                    # Number of MLP layers (match MACFM)
+  dropout: 0.3                  # Dropout rate (match MACFM)
+
+# SB-FLOW specific hyperparameters
+sbflow:
+  # Loss weights - Use small weights for backward/cycle (preserves SB structure)
+  # Key insight: Forward is primary, Backward helps learn missing mechanism
+  lambda_B: 0.1                 # Backward bridge loss weight (small, for MNAR modeling)
+  lambda_cycle: 0.0             # Cycle consistency DISABLED (too slow for large datasets)
+  
+  # Source distribution
+  source_sigma: 1.0             # Noise std for missing positions
+  
+  # Optimal Transport
+  ot_alpha: 0.1                 # Weight for observed positions in OT cost
+  ot_reg: 0.05                  # Sinkhorn entropy regularization
+  
+  # Cycle consistency
+  cycle_steps: 5                # ODE steps for cycle consistency (reduced for speed)
+
+# Training configuration
+train:
+  max_epochs: 10000             # Aligned with impute-MACFM
+  save_root: runs/SBFLOW
+  save_every: 500
+  lr: 0.0001
+  amp: true
+  weight_decay: 0.0
+  grad_clip: 1.0
+  
+  # Path schedule (cosine aligned with MACFM for better performance)
+  path_schedule: "cosine"       # linear | cosine
+  time_beta: [1.0, 1.0]         # Beta distribution for time sampling
+  
+  # NEW: MACFM-style regularization (critical for performance!)
+  lambda_stab: 0.15             # Stabilization: keep velocity ~0 on observed positions
+  lambda_cons: 0.01             # Consistency: similar output for perturbed input
+  eta_cons: 0.05                # Perturbation scale for consistency
+  sigma_in: 0.05                # Input noise on observed positions
+  augment_target_p: 0.15        # Mask augmentation: randomly move obs→target
+  
+  # EMA
+  ema:
+    enabled: true
+    decay: 0.999
+  
+  # Early stopping (aligned with impute-MACFM: patience=500)
+  early_stopping:
+    enabled: true
+    patience: 500               # Increased from 300 to match MACFM
+    min_delta: 0.0001
+
+# Imputation/Inference configuration  
+fm:
+  steps: 50                     # ODE integration steps
+  trials: 50                    # Number of trials (match MACFM)
+  solver: "heun"                # euler | heun
+  aggregation: "mean"           # mean for lower MAE/RMSE
+  
+  # Resampling - DISABLED for accurate MNAR detection
+  resample:
+    enabled: false              # Disabled for accurate MNAR Score
+    interval: 5
+    sigma: 0.6
+
