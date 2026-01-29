@@ -21,8 +21,7 @@ from sklearn.impute import IterativeImputer, KNNImputer
 
 # Add paths
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-DIFFPUTER_PATH = "/scratch/iotgroup/dengyiliu/impute-fm/DiffPuter"
-DATA_DIR = f"{DIFFPUTER_PATH}/datasets"
+DATA_DIR = "./data"
 
 
 def load_data_simple(dataname, mask_type, rate=30, split_idx=0):
